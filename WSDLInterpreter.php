@@ -54,6 +54,7 @@ class WSDLInterpreterException extends Exception { }
  * $wsdlInterpreter->savePHP('/example/output/directory/');
  * </code>
  * 
+ * @version 1.0.0a3
  * @category WebServices
  * @package WSDLInterpreter
  */
@@ -126,6 +127,7 @@ class WSDLInterpreter
             $xslDom->load(dirname(__FILE__)."/wsdl2php.xsl");
             $xsl->importStyleSheet($xslDom);
             $this->_dom = $xsl->transformToDoc($this->_dom);
+            $this->_dom->formatOutput = true;
         } catch (Exception $e) {
             throw new WSDLInterpreterException("Error interpreting WSDL document (".$e->getMessage().")");
         }
@@ -399,11 +401,13 @@ class WSDLInterpreter
         $return .= "\t".' */'."\n";
         $return .= "\t".'public function __construct($wsdl="'.
             $this->_wsdl.'", $options=array()) {'."\n";
-        $return .= "\t\t".'foreach(self::$classmap as $wsdlClassName => $phpClassName) {'."\n";
-        $return .= "\t\t".'    if(!isset($options[\'classmap\'][$wsdlClassName])) {'."\n";
-        $return .= "\t\t".'        $options[\'classmap\'][$wsdlClassName] = $phpClassName;'."\n";
-        $return .= "\t\t".'    }'."\n";
-        $return .= "\t\t".'}'."\n";
+        if (sizeof($this->_classmap) > 0) {
+            $return .= "\t\t".'foreach(self::$classmap as $wsdlClassName => $phpClassName) {'."\n";
+            $return .= "\t\t".'    if(!isset($options[\'classmap\'][$wsdlClassName])) {'."\n";
+            $return .= "\t\t".'        $options[\'classmap\'][$wsdlClassName] = $phpClassName;'."\n";
+            $return .= "\t\t".'    }'."\n";
+            $return .= "\t\t".'}'."\n";
+        }
         $return .= "\t\t".'parent::__construct($wsdl, $options);'."\n";
         $return .= "\t}\n\n";
         $return .= "\t".'/**'."\n";
@@ -498,22 +502,31 @@ class WSDLInterpreter
                 }
             }
         }
-        $return .= "\t".' * Parameter options:'."\n";
-        $return .= join("\n", $parameterComments)."\n";
-        $return .= "\t".' * @param mixed,... See function description for parameter options'."\n";
+        if (sizeof($parameterComments) > 0) {
+            $return .= "\t".' * Parameter options:'."\n";
+            $return .= join("\n", $parameterComments)."\n";
+            $return .= "\t".' * @param mixed,... See function description for parameter options'."\n";
+        }
         $return .= "\t".' * @return '.join("|", array_unique($returnOptions))."\n";
         $return .= "\t".' * @throws Exception invalid function signature message'."\n"; 
         $return .= "\t".' */'."\n";
-        $return .= "\t".'public function '.$functionName.'($mixed = null) {'."\n";
-        $return .= "\t\t".'$validParameters = array('."\n";
-        foreach ($variableTypeOptions as $variableTypeOption) {
-            $return .= "\t\t\t".'"'.$variableTypeOption.'",'."\n";
+        $return .= "\t".'public function '.$functionName;
+        if (sizeof($variableTypeOptions) > 0) {
+            $return .= '($mixed = null) {'."\n";
+            $return .= "\t\t".'$validParameters = array('."\n";
+            foreach ($variableTypeOptions as $variableTypeOption) {
+                $return .= "\t\t\t".'"'.$variableTypeOption.'",'."\n";
+            }
+            $return .= "\t\t".');'."\n";
+            $return .= "\t\t".'$args = func_get_args();'."\n";
+            $return .= "\t\t".'$this->_checkArguments($args, $validParameters);'."\n";
+            $return .= "\t\t".'return $this->__soapCall("'.
+                $functionNodeList[0]->getAttribute("name").'", $args);'."\n";
+        } else {
+            $return .= '() {'."\n";
+            $return .= "\t\t".'return $this->__soapCall("'.
+                $functionNodeList[0]->getAttribute("name").'", array());'."\n";
         }
-        $return .= "\t\t".');'."\n";
-        $return .= "\t\t".'$args = func_get_args();'."\n";
-        $return .= "\t\t".'$this->_checkArguments($args, $validParameters);'."\n";
-        $return .= "\t\t".'return $this->__soapCall("'.
-            $functionNodeList[0]->getAttribute("name").'", $args);'."\n";
         $return .= "\t".'}'."\n";
         
         return $return;

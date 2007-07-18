@@ -4,35 +4,35 @@
 <xsl:template match="/">
 <wsdl2php>
     <classes>
-        <xsl:apply-templates select="//*[name()='wsdl:types']" />
+        <xsl:apply-templates select="//*[local-name()='types' and namespace-uri()='http://schemas.xmlsoap.org/wsdl/']" />
     </classes>
     <services>
-        <xsl:apply-templates select="//*[name()='wsdl:service']" />
+        <xsl:apply-templates select="//*[local-name()='service' and namespace-uri()='http://schemas.xmlsoap.org/wsdl/']" />
     </services>
 </wsdl2php>
 </xsl:template>
 
-<xsl:template match="*[name()='wsdl:types']">
-    <xsl:apply-templates select=".//*[name()='complexType' and not(starts-with(@name, 'ArrayOf_'))]" />
+<xsl:template match="*[local-name()='types']">
+    <xsl:apply-templates select=".//*[local-name()='complexType' and not(starts-with(@name, 'ArrayOf_'))]" />
 </xsl:template>
 
-<xsl:template match="*[name()='complexType']">
+<xsl:template match="*[local-name()='complexType']">
     <class name="{@name | ../@name}">
-        <xsl:if test=".//*[name()='extension']">
+        <xsl:if test=".//*[local-name()='extension']">
             <extends>
-                <xsl:value-of select="substring-after(.//*[name()='extension']/@base,':')" />
+                <xsl:value-of select="substring-after(.//*[local-name()='extension']/@base,':')" />
             </extends>
         </xsl:if>
-        <xsl:if test=".//*[name()='element']">
+        <xsl:if test=".//*[local-name()='element']">
             <properties>
-                <xsl:for-each select=".//*[name()='element']">
+                <xsl:for-each select=".//*[local-name()='element']">
                     <xsl:choose>
                         <xsl:when test="substring-before(@type,':')='xsd'">
                             <property name="{@name}" type="{substring-after(@type,':')}" />
                         </xsl:when>
-                        <xsl:when test="//*[name()='complexType' and @name=substring-after(current()/@type,':')]//*[@ref='soapenc:arrayType']">
+                        <xsl:when test="//*[local-name()='complexType' and @name=substring-after(current()/@type,':')]//*[@ref='soapenc:arrayType']">
                             <xsl:variable name="type"
-                                select="//*[name()='complexType' and @name=substring-after(current()/@type,':')]//*[@ref='soapenc:arrayType']/@*[name()='wsdl:arrayType']" />
+                                select="//*[local-name()='complexType' and @name=substring-after(current()/@type,':')]//*[@ref='soapenc:arrayType']/@*[local-name()='wsdl:arrayType']" />
                             <property name="{@name}" type="{substring-after($type,':')}" />
                         </xsl:when>
                         <xsl:when test="not(@type) and @ref">
@@ -55,42 +55,42 @@
     </class>
 </xsl:template>
 
-<xsl:template match="*[name()='wsdl:service']">
+<xsl:template match="*[local-name()='service']">
     <service name="{@name}">
-        <xsl:apply-templates select="*[name()='wsdl:port']" />
+        <xsl:apply-templates select="*[local-name()='port' and namespace-uri()='http://schemas.xmlsoap.org/wsdl/']" />
     </service>
 </xsl:template>
 
-<xsl:template match="*[name()='wsdl:port']">
-    <xsl:apply-templates select="//*[name()='wsdl:binding' and @name=substring-after(current()/@binding,':')]" />
+<xsl:template match="*[local-name()='port']">
+    <xsl:apply-templates select="//*[local-name()='binding' and @name=substring-after(current()/@binding,':')]" />
 </xsl:template>
 
-<xsl:template match="*[name()='wsdl:binding']">
+<xsl:template match="*[local-name()='binding']">
     <functions>
-        <xsl:apply-templates select=".//*[name()='wsdl:operation']" />
+        <xsl:apply-templates select=".//*[local-name()='operation' and namespace-uri()='http://schemas.xmlsoap.org/wsdl/']" />
     </functions>
 </xsl:template>
 
-<xsl:template match="*[name()='wsdl:operation']">
+<xsl:template match="*[local-name()='operation' and namespace-uri()='http://schemas.xmlsoap.org/wsdl/']">
     <function name="{@name}">
         <parameters>
-            <xsl:apply-templates select="//*[name()='wsdl:message' and @name=current()/*[name()='wsdl:input']/@name]" />
+            <xsl:apply-templates select="//*[local-name()='message' and @name=current()/*[local-name()='input']/@name]" />
         </parameters>
         <returns>
-            <xsl:apply-templates select="//*[name()='wsdl:message' and @name=current()/*[name()='wsdl:output']/@name]" />
+            <xsl:apply-templates select="//*[local-name()='message' and @name=current()/*[local-name()='output']/@name]" />
         </returns>
     </function>
 </xsl:template>
 
-<xsl:template match="*[name()='wsdl:message']">
-    <xsl:for-each select="*[name()='wsdl:part']">
+<xsl:template match="*[local-name()='message']">
+    <xsl:for-each select="*[local-name()='part']">
         <xsl:choose>
             <xsl:when test="substring-before(@type,':')='xsd'">
                 <variable name="{@name}" type="{substring-after(@type,':')}" />
             </xsl:when>
-            <xsl:when test="//*[name()='complexType' and @name=substring-after(current()/@type,':')]//*[@ref='soapenc:arrayType']">
+            <xsl:when test="//*[local-name()='complexType' and @name=substring-after(current()/@type,':')]//*[@ref='soapenc:arrayType']">
                 <xsl:variable name="type"
-                    select="//*[name()='complexType' and @name=substring-after(current()/@type,':')]//*[@ref='soapenc:arrayType']/@*[name()='wsdl:arrayType']" />
+                    select="//*[local-name()='complexType' and @name=substring-after(current()/@type,':')]//*[@ref='soapenc:arrayType']/@*[local-name()='arrayType']" />
                 <variable name="{@name}" type="{substring-after($type,':')}" />
             </xsl:when>
             <xsl:when test="not(@type) and @element">
